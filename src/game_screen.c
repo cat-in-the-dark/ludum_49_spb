@@ -23,11 +23,13 @@ typedef struct {
 #define TILE_H 10
 #define BLOCK_SIZE 4
 
+#define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
 static Color tilemap[TILES_Y][TILES_X] = {0};
 
 typedef struct {
     Color color;
+    Vector2 center; // in tiles;
     int data[4][4][4];
 } Tetramino;
 
@@ -39,6 +41,7 @@ typedef struct {
 
 static Tetramino I_Block = {
     .color = SKYBLUE,
+    .center = {.x = 2, .y = 2},
     .data = {
     {
         {0, 0, 0, 0},
@@ -65,6 +68,7 @@ static Tetramino I_Block = {
 
 static Tetramino J_Block = {
     .color = BLUE,
+    .center = {.x = 1.5, .y = 2.5},
     .data = {
     {
         {0, 0, 0, 0},
@@ -91,6 +95,7 @@ static Tetramino J_Block = {
 
 static Tetramino L_Block = {
     .color = ORANGE,
+    .center = {.x = 1.5, .y = 2.5},
     .data = {
     {
         {0, 0, 0, 0},
@@ -115,7 +120,36 @@ static Tetramino L_Block = {
     }}
 };
 
-static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block};
+static Tetramino O_Block = {
+    .color = YELLOW,
+    .center = {.x = 2, .y = 2},
+    .data = {
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        }
+    }
+};
+
+// static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
+static Tetramino* Blocks[] = {&O_Block};
 
 static const char* text = "Game screen!";
 static Vector2 text_size;
@@ -155,8 +189,6 @@ bool IsBlank(Color color) {
 }
 
 float distance_acceleration(PlanetState state) {
-//   return state.distance.value * Math.pow(state.angle.speed, 2) -
-    // (constants.gravitationalConstant * state.massOfTheSunKg) / Math.pow(state.distance.value, 2);
     return state.distance.value * pow(state.angle.speed, 2) -
     (gravity_const * star_mass) / pow(state.distance.value, 2);
 }
@@ -193,22 +225,27 @@ void ResetPlanetState() {
     planet_state.angle.speed = 1.990986 * pow(10, -7);
 }
 
-void updateDeltaTime() {
+void GenerateNextTetramino() {
+    active_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
+    active_tetramino.rot_index = 0;
+}
+
+float UpdateDeltaTime(PlanetState state) {
     float dDeltaTime = maxDeltaTime - minDeltaTime;
     float dDist = maxDist - minDist;
-    float targetDist = planet_state.distance.value;
+    float targetDist = state.distance.value;
     if (targetDist < minDist) {
         targetDist = minDist;
     } else if (targetDist > maxDist) {
         targetDist = maxDist;
     }
 
-    delta_time = minDeltaTime + (dDeltaTime / dDist) * (targetDist - minDist);
+    return minDeltaTime + (dDeltaTime / dDist) * (targetDist - minDist);
 }
 
 void PlaceTetramino() {
-    float deltaX = active_tetramino.pos.x - tileMapPosX;
-    float deltaY = active_tetramino.pos.y - tileMapPosY;
+    float deltaX = active_tetramino.pos.x - active_tetramino.block->center.x * TILE_W - tileMapPosX;
+    float deltaY = active_tetramino.pos.y - active_tetramino.block->center.y * TILE_H - tileMapPosY;
     int ix = (int) round(deltaX / TILE_W);
     int iy = (int) round(deltaY / TILE_H);
     
@@ -222,7 +259,7 @@ void PlaceTetramino() {
                 continue;
             }
 
-            printf("%lu %lu Add\n", ix + x, iy + y);
+            printf("%lu %lu (%d %lu %d %lu) Add\n", ix + x, iy + y, ix, x, iy, y);
             if (!IsBlank(tilemap[ix + x][iy + y])) {
                 printf("%lu %lu is already taken!\n", ix + x, iy + y);
             }
@@ -232,9 +269,9 @@ void PlaceTetramino() {
     }
 
     ResetPlanetState();
+    GenerateNextTetramino();
     // TODO: 7!
     // TODO TODO: Blocks pool!
-    active_tetramino.block = Blocks[GetRandomValue(0, 2)];
 }
 
 void intersect_tiles(ActiveTetramino block) {
@@ -246,8 +283,8 @@ void intersect_tiles(ActiveTetramino block) {
     };
 
     Rectangle blockRect = {
-        .x = block.pos.x,
-        .y = block.pos.y,
+        .x = block.pos.x - block.block->center.x * TILE_W,
+        .y = block.pos.y - block.block->center.y * TILE_H,
         .width = TILE_W * BLOCK_SIZE,
         .height = TILE_H * BLOCK_SIZE
     };
@@ -285,8 +322,8 @@ void intersect_tiles(ActiveTetramino block) {
                                 continue;
                             }
 
-                            targetRect.x = block.pos.x + x * TILE_W;
-                            targetRect.y = block.pos.y + y * TILE_H;
+                            targetRect.x = blockRect.x + x * TILE_W;
+                            targetRect.y = blockRect.y + y * TILE_H;
 
                             if (CheckCollisionRecs(tileRect, targetRect)) {
                                 printf("Collision!\n");
@@ -306,6 +343,10 @@ void intersect_tiles(ActiveTetramino block) {
 void draw_tetramino(ActiveTetramino tetramino) {
     int rot_index = tetramino.rot_index;
     int (*block)[4] = tetramino.block->data[rot_index];
+
+    float startX = tetramino.pos.x - tetramino.block->center.x * TILE_W;
+    float startY = tetramino.pos.y - tetramino.block->center.y * TILE_H;
+
     for (size_t i = 0; i < BLOCK_SIZE; i++)
     {
         for (size_t j = 0; j < BLOCK_SIZE; j++)
@@ -314,10 +355,49 @@ void draw_tetramino(ActiveTetramino tetramino) {
                 continue;
             }
 
-            DrawRectangleLines(tetramino.pos.x + j * TILE_W, tetramino.pos.y + i * TILE_H, 
+            DrawRectangleLines(startX + j * TILE_W, startY + i * TILE_H, 
                 TILE_W, TILE_H, tetramino.block->color);
         }
     }
+}
+
+Vector2 StateToCoords(PlanetState state, float scale, Vector2 center) {
+    Vector2 result;
+    float dist_to_scale = state.distance.value / dist_scale;
+    result.x = center.x + dist_to_scale * cos(state.angle.value);
+    result.y = center.y + dist_to_scale * sin(state.angle.value);
+    return result;
+}
+
+void UpdatePlanetState(PlanetState* state, float dt) {
+    float dist_acc = distance_acceleration(*state);
+    state->distance.speed = new_value(state->distance.speed, dt, dist_acc);
+    state->distance.value = new_value(state->distance.value, dt, state->distance.speed);
+
+    float angle_acc = angle_acceleratioin(*state);
+    state->angle.speed = new_value(state->angle.speed, dt, angle_acc);
+    state->angle.value = new_value(state->angle.value, dt, state->angle.speed);
+}
+
+void draw_trajectory() {
+    const size_t trajectory_size = 30;
+    const int dt = 10;
+    PlanetState trajectory[trajectory_size];
+    memcpy(&trajectory[0], &planet_state, sizeof(PlanetState));
+    Vector2 startPos = StateToCoords(trajectory[0], dist_scale, star_pos);
+    for (size_t i = 1; i < trajectory_size; i++)
+    {
+        memcpy(&trajectory[i], &trajectory[i-1], sizeof(PlanetState));
+        for (size_t j = 0; j < dt; j++)
+        {
+            float local_delta_time = UpdateDeltaTime(trajectory[i]);
+            UpdatePlanetState(&trajectory[i], local_delta_time);
+        }
+
+        Vector2 endPos = StateToCoords(trajectory[i], dist_scale, star_pos);
+        DrawLineEx(startPos, endPos, 1, RED);
+        startPos = endPos;
+    }    
 }
 
 void game_init() {
@@ -326,15 +406,14 @@ void game_init() {
     delta_time = 3600 * 24;
     dist_scale = 6.5 * pow(10, 8);
 
-    active_tetramino.block = &L_Block;
-    active_tetramino.rot_index = 0;
-
     maxDeltaTime = 3600 * 24;
     minDeltaTime = 3600;
     maxDist = 1.496 * pow(10, 11);
     minDist = 3.5 * pow(10, 8);
 
     text_size = MeasureTextEx(GetFontDefault(), text, 20, 1);
+
+    GenerateNextTetramino();
     ResetPlanetState();
 
     star_pos.x = SCREEN_WIDTH / 2;
@@ -349,13 +428,7 @@ void game_init() {
 }
 
 screen_t game_update() {
-    float dist_acc = distance_acceleration(planet_state);
-    planet_state.distance.speed = new_value(planet_state.distance.speed, delta_time, dist_acc);
-    planet_state.distance.value = new_value(planet_state.distance.value, delta_time, planet_state.distance.speed);
-
-    float angle_acc = angle_acceleratioin(planet_state);
-    planet_state.angle.speed = new_value(planet_state.angle.speed, delta_time, angle_acc);
-    planet_state.angle.value = new_value(planet_state.angle.value, delta_time, planet_state.angle.speed);
+    UpdatePlanetState(&planet_state, delta_time);
 
     if (IsKeyDown(KEY_UP)) {
         planet_state.angle.speed += pow(10, -9);
@@ -376,13 +449,13 @@ screen_t game_update() {
         active_tetramino.rot_index = (active_tetramino.rot_index + 1) % 4;
     }
 
-    printf("%f %f %f %.15f %f\n", planet_state.distance.value, planet_state.distance.speed, planet_state.angle.value, planet_state.angle.speed, delta_time);
+    // printf("%f %f %f %.15f %f\n", planet_state.distance.value, planet_state.distance.speed, planet_state.angle.value, planet_state.angle.speed, delta_time);
 
-    float dist_to_scale = planet_state.distance.value / dist_scale;
-    active_tetramino.pos.x = star_pos.x + dist_to_scale * cos(planet_state.angle.value);
-    active_tetramino.pos.y = star_pos.y + dist_to_scale * sin(planet_state.angle.value);
+    Vector2 tetraminoPos = StateToCoords(planet_state, dist_scale, star_pos);
+    active_tetramino.pos.x = tetraminoPos.x;
+    active_tetramino.pos.y = tetraminoPos.y;
 
-    updateDeltaTime();
+    delta_time = UpdateDeltaTime(planet_state);
 
     intersect_tiles(active_tetramino);
 
@@ -394,6 +467,7 @@ void game_draw() {
     ClearBackground(RAYWHITE);
 
     draw_tetramino(active_tetramino);
+    draw_trajectory();
     draw_tilemap();
 
     EndDrawing();
