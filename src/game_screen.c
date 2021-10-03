@@ -288,6 +288,10 @@ static const float distThreshold = 0.0001f;
 
 static PlanetState planet_state = {0};
 
+static const float maxPieceDistance = SCREEN_HEIGHT * 2;
+static const int newPieceTextFrames = 120;
+static int newPieceTextCurrentFrame;
+
 // camera
 static Camera2D camera;
 static float newZoom;
@@ -897,9 +901,19 @@ float draw_trajectory() {
     return maxDist;
 }
 
+void DetectPieceTooFar(ActiveTetramino piece) {
+    if (Vector2Distance(piece.pos, star_pos) > maxPieceDistance) {
+        ResetPlanetState();
+        newPieceTextCurrentFrame = 0;
+        // GenerateNextTetramino();
+    }
+}
+
 void game_init() {
     gameOver = false;
     gamePoints = 0;
+
+    newPieceTextCurrentFrame = newPieceTextFrames;
 
     star_mass = 1.98855 * pow(10, 30);
     gravity_const = 6.67408 * pow(10, -11);
@@ -988,6 +1002,8 @@ screen_t game_update() {
 
     MoveSlidingTetramino(&sliding_tetramino);
 
+    DetectPieceTooFar(active_tetramino);
+
     if (gameOver) {
         return game_over_screen;
     } else {
@@ -1006,15 +1022,7 @@ void game_draw() {
         camera.zoom += zoomSpeed * dir;
     }
 
-    // Draw UI before camera
     ClearBackground(RAYWHITE);
-
-    char points_text[64] = {0};
-    snprintf(points_text, 63, "Score: %d", gamePoints);
-    DrawText(points_text, 20, 20, 20, GRAY);
-
-    DrawText("Next:", 20, 60, 20, GRAY);
-    draw_tetramino(next_tetramino);
 
     BeginMode2D(camera);
 
@@ -1030,6 +1038,23 @@ void game_draw() {
     draw_tilemap();
 
     EndMode2D();
+
+    // draw UI after camera
+    if (newPieceTextCurrentFrame < newPieceTextFrames) {
+        char* newPieceText = "Here's your piece\nDon't lose it again!";
+        Vector2 size = MeasureTextEx(GetFontDefault(), newPieceText, 20, 1);
+        DrawText(newPieceText, SCREEN_WIDTH / 2 - size.x / 2, SCREEN_HEIGHT / 2 - size.y / 2, 20, GRAY);
+        newPieceTextCurrentFrame += 1;
+    }
+
+    char points_text[64] = {0};
+    snprintf(points_text, 63, "Score: %d", gamePoints);
+    DrawText(points_text, 20, 20, 20, GRAY);
+
+    DrawText("Next:", 20, 60, 20, GRAY);
+    draw_tetramino(next_tetramino);
+
+
     EndDrawing();
 }
 
