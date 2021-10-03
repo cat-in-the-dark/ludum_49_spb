@@ -277,6 +277,12 @@ static const float distThreshold = 0.0001f;
 
 static PlanetState planet_state = {0};
 
+// camera
+static Camera2D camera;
+static float newZoom;
+static const float zoomSpeed = 0.005;
+static const int frameOffset = 20;  // px
+
 static bool gameOver = false;
 int gamePoints;
 
@@ -305,17 +311,25 @@ float new_value(float current_value, float delta_time, float derivative) {
 void draw_tilemap() {
 
     // draw tetirs boundaries
-    int width = ROW_LENGTH * TILE_W;
-    int height = ROW_LENGTH * TILE_H;
-    int startX = centerX - width / 2;
-    int startY = centerY - height / 2;
-    DrawRectangleLines(startX, startY, width, height, GRAY);
+    Rectangle rect = {
+        .width = ROW_LENGTH * TILE_W,
+        .height = ROW_LENGTH * TILE_H
+    };
 
-    width = DEATH_LENGTH * TILE_W;
-    height = DEATH_LENGTH * TILE_H;
-    startX = centerX - width / 2;
-    startY = centerY - height / 2;
-    DrawRectangleLines(startX, startY, width, height, RED);
+    rect.x = centerX - rect.width / 2;
+    rect.y = centerY - rect.height / 2;
+
+    Color c = GRAY;
+    c.a = 127;
+    DrawRectangleLinesEx(rect, 2, c);
+
+    rect.width = DEATH_LENGTH * TILE_W;
+    rect.height = DEATH_LENGTH * TILE_H;
+    rect.x = centerX - rect.width / 2;
+    rect.y = centerY - rect.height / 2;
+    c = RED;
+    c.a = 127;
+    DrawRectangleLinesEx(rect, 2, c);
 
     // draw tiles
     for (size_t i = 0; i < TILES_X; i++)
@@ -771,16 +785,24 @@ void UpdatePlanetState(PlanetState* state, float dt) {
     state->angle.value = new_value(state->angle.value, dt, state->angle.speed);
 }
 
-void draw_trajectory() {
-    const size_t trajectory_size = 30;
+float draw_trajectory() {
+    const size_t trajectory_size = 50;
     const int dt = 10;
     PlanetState trajectory[trajectory_size];
     memcpy(&trajectory[0], &planet_state, sizeof(PlanetState));
     Vector2 startPos = StateToCoords(trajectory[0], dist_scale, star_pos);
-    Vector2 firstPoint = Vector2Scale(startPos, 1);
+    Vector2 firstPoint = startPos;
+    float maxDist = 0.0f;
     Color color = RED;
+    color.a = 127;
     for (size_t i = 1; i < trajectory_size; i++)
     {
+        float dist = Vector2Distance(star_pos, startPos);
+        if (dist > maxDist)
+        {
+            maxDist = dist;
+        }
+        
         memcpy(&trajectory[i], &trajectory[i-1], sizeof(PlanetState));
         for (size_t j = 0; j < dt; j++)
         {
@@ -790,20 +812,22 @@ void draw_trajectory() {
 
         Vector2 endPos = StateToCoords(trajectory[i], dist_scale, star_pos);
 
-        color.a -= 255 / trajectory_size;
-        DrawLineEx(startPos, endPos, 1, color);
+        color.a -= 127 / trajectory_size;
+        DrawLineEx(startPos, endPos, 2, color);
 
         if (i > 10 && Vector2Distance(endPos, firstPoint) < TILE_W * 2) {
-            return;
+            return maxDist;
         }
 
         if (Vector2Distance(endPos, star_pos) < TILE_W * 2)
         {
-            return;
+            return maxDist;
         }
         
         startPos = endPos;
-    }    
+    }
+
+    return maxDist;
 }
 
 void game_init() {
@@ -838,6 +862,12 @@ void game_init() {
     tilemap[TILES_X/2][TILES_Y/2-1] = YELLOW;
     tilemap[TILES_X/2][TILES_Y/2] = BLUE;
 
+    // camera
+    camera.zoom = 1.0f;
+    camera.offset = star_pos;
+    camera.target = star_pos;
+    newZoom = 1.0f;
+
     printf("%s called\n", __FUNCTION__);
 }
 
@@ -850,12 +880,6 @@ screen_t game_update() {
     if (IsKeyDown(KEY_DOWN)) {
         planet_state.angle.speed -= pow(10, -9);
     }
-    // if (IsKeyDown(KEY_LEFT)) {
-    //     planet_state.distance.speed += 50;
-    // }
-    // if (IsKeyDown(KEY_RIGHT)) {
-    //     planet_state.distance.speed -= 50;
-    // }
 
     if (IsKeyPressed(KEY_LEFT)) {
         active_tetramino.rot_index = (active_tetramino.rot_index + 3) % 4;  // same as -1 % 4
@@ -902,6 +926,16 @@ screen_t game_update() {
 
 void game_draw() {
     BeginDrawing();
+
+    // zoom interpolation
+    float dif = camera.zoom - newZoom;
+    if (fabs(dif) > zoomSpeed)
+    {
+        int dir = dif < 0 ? 1 : -1;
+        camera.zoom += zoomSpeed * dir;
+    }
+
+    // Draw UI before camera
     ClearBackground(RAYWHITE);
 
     char points_text[64] = {0};
@@ -909,15 +943,23 @@ void game_draw() {
     DrawText(points_text, 20, 20, 20, GRAY);
 
     DrawText("Next:", 20, 60, 20, GRAY);
+    draw_tetramino(next_tetramino);
+
+    BeginMode2D(camera);
 
     draw_tetramino(active_tetramino);
     draw_tetramino(sliding_tetramino);
-    draw_tetramino(next_tetramino);
-    draw_trajectory();
+    float maxDist = draw_trajectory();
+    float targetScale = (SCREEN_HEIGHT / 2 - frameOffset) / maxDist;
+
+    if (targetScale <= 1.1f && targetScale > 0.5f) {
+        newZoom = targetScale;
+    }
+
     draw_tilemap();
 
+    EndMode2D();
     EndDrawing();
-    // DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, BLACK);
 }
 
 void game_close() {
