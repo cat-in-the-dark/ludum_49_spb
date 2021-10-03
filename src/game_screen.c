@@ -1076,16 +1076,16 @@ void game_init() {
 screen_t game_update() {
     UpdatePlanetState(&planet_state, delta_time);
 
-    if (IsKeyDown(KEY_UP)) {
+    if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
         planet_state.angle.speed += pow(10, -9);
     }
-    if (IsKeyDown(KEY_DOWN)) {
+    if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
         planet_state.angle.speed -= pow(10, -9);
     }
 
-    if (IsKeyPressed(KEY_LEFT)) {
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
         active_tetramino.rot_index = (active_tetramino.rot_index + 3) % 4;  // same as -1 % 4
-    } else if (IsKeyPressed(KEY_RIGHT)) {
+    } else if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
         active_tetramino.rot_index = (active_tetramino.rot_index + 1) % 4;
     }
 
