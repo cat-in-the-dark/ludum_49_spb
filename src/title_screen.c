@@ -40,6 +40,7 @@ void title_draw() {
     DrawRectangle(startX + 4 * scale, startY + 6 * scale, 2 * scale, scale, RAYWHITE);
 
     DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, 360, 32, LIGHTGRAY);
+    DrawText("Press [Enter]", SCREEN_WIDTH / 2 - text_size.x / 2, 400, 20, LIGHTGRAY);
     EndDrawing();
 }
 
