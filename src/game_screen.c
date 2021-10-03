@@ -23,6 +23,7 @@ typedef struct {
 #define TILES_Y 10
 #define TILE_W 10 // px
 #define TILE_H 10
+#define ROW_LENGTH 6
 #define BLOCK_SIZE 4
 
 #define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
@@ -154,8 +155,8 @@ static Tetramino O_Block = {
     }
 };
 
-static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
-// static Tetramino* Blocks[] = {&O_Block};
+// static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
+static Tetramino* Blocks[] = {&O_Block};
 
 static const char* text = "Game screen!";
 static Vector2 text_size;
@@ -295,6 +296,89 @@ void GetTetraminoTilemapPos(ActiveTetramino block, int (*coords)[2] /* int[4][2]
     }
 }
 
+void CheckRows() {
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        size_t row_start = (TILES_Y - ROW_LENGTH) / 2;
+        bool hit = true;
+        for (size_t j = row_start; j < row_start + ROW_LENGTH; j++)
+        {
+            if (IsBlank(tilemap[i][j])) {
+                hit = false;
+            }
+        }
+        
+        if (hit) {
+            printf("Filled by Y at x = %lu\n", i);
+            size_t di = 1, max_i = TILES_X;
+            if (i < TILES_X / 2) {
+                printf("Move right\n");
+                di = -1;
+                max_i = 0;
+            } else {
+                printf("Move left\n");
+            }
+            for (size_t i1 = i; i1 != max_i; i1 = i1 + di)
+            {
+                for (size_t j1 = 0; j1 < TILES_Y; j1++)
+                {
+                    if ((di > 0 && i1 == TILES_X - 1) || (di < 0 && i1 == 0)) {
+                        tilemap[i1][j1] = BLANK;
+                    } else {
+                        tilemap[i1][j1] = tilemap[i1 + di][j1];
+                    }
+                }
+            }
+
+            // check same row again
+            if (di > 0) {
+                i = i - 1;
+            }
+        }
+    }
+
+    for (size_t j = 0; j < TILES_Y; j++)
+    {
+        size_t col_start = (TILES_X - ROW_LENGTH) / 2;
+        bool hit = true;
+        for (size_t i = col_start; i < col_start + ROW_LENGTH; i++)
+        {
+            if (IsBlank(tilemap[i][j])) {
+                hit = false;
+            }
+        }
+        
+        if (hit) {
+            printf("Filled by X at y = %lu\n", j);
+            size_t dj = 1, max_j = TILES_Y;
+            if (j < TILES_Y / 2) {
+                printf("Move down\n");
+                dj = -1;
+                max_j = 0;
+            } else {
+                printf("Move up\n");
+            }
+
+            for (size_t j1 = j; j1 != max_j; j1 = j1 + dj)
+            {
+                for (size_t i1 = 0; i1 < TILES_X; i1++)
+                {
+                    if ((dj > 0 && j1 == TILES_Y - 1) || (dj < 0 && j1 == 0)) {
+                        tilemap[i1][j1] = BLANK;
+                    } else {
+                        tilemap[i1][j1] = tilemap[i1][j1+dj];
+                    }
+                }
+            }
+
+            // check same column again
+            if (dj > 0) {
+                j = j - 1;
+            }
+        }
+    }
+}
+
 void PlaceTetramino(ActiveTetramino* block) {
     int coords[BLOCK_SIZE][2] = {};
     GetTetraminoTilemapPos(*block, coords);
@@ -303,6 +387,8 @@ void PlaceTetramino(ActiveTetramino* block) {
         printf("Add %d %d\n", coords[i][0], coords[i][1]);
         tilemap[coords[i][0]][coords[i][1]] = block->block->color;
     }
+
+    CheckRows();
 }
 
 bool CanMove(ActiveTetramino* block, int dx, int dy) {
