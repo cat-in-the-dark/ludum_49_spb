@@ -19,7 +19,10 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/title_screen.c
     src/game_screen.c
-    src/game_over_screen.c)
+    src/game_over_screen.c
+    src/start_screen.c
+    src/tetramino.c
+    src/orbital.c)
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/") # Set the asset path macro to the absolute path on the dev machine

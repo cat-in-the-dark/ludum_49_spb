@@ -36,8 +36,7 @@ int main(int argc, char const *argv[])
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Window title");
 
-    // current_screen = title_screen;
-    current_screen = game_screen;
+    current_screen = title_screen;
     current_screen.init();
 
 #if defined(PLATFORM_WEB)

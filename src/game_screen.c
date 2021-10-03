@@ -9,16 +9,8 @@
 #include "const.h"
 #include "game_screen.h"
 #include "game_over_screen.h"
-
-typedef struct {
-    float value;
-    float speed;
-} SpVector2;
-
-typedef struct {
-    SpVector2 distance;
-    SpVector2 angle;
-} PlanetState;
+#include "orbital.h"
+#include "tetramino.h"
 
 #define TILES_X 20
 #define TILES_Y 20
@@ -32,8 +24,6 @@ typedef struct {
 #define FLAG_TO_DELETE 224
 #define FLAG_OOB 223
 
-#define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
-
 typedef struct {
     Color color;
     Vector2 pos;
@@ -42,12 +32,7 @@ typedef struct {
 
 static Color tilemap[TILES_X][TILES_Y] = {0};
 static MovingPoint explodeMap[TILES_X][TILES_Y] = {0};
-
-typedef struct {
-    Color color;
-    Vector2 center; // in tiles;
-    int data[4][4][4];
-} Tetramino;
+static Rectangle stars[50] = {0};
 
 typedef struct {
     int rot_index;
@@ -63,202 +48,6 @@ typedef struct {
     bool rows[TILES_Y];
     bool columns[TILES_X];
 } TileDeleteInfo;
-
-static Tetramino I_Block = {
-    .color = SKYBLUE,
-    .center = {.x = 2, .y = 2},
-    .data = {
-    {
-        {0, 0, 0, 0},
-        {1, 1, 1, 1},
-        {0, 0, 0, 0},
-        {0, 0, 0, 0}
-    }, {
-        {0, 0, 1, 0},
-        {0, 0, 1, 0},
-        {0, 0, 1, 0},
-        {0, 0, 1, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 0, 0, 0},
-        {1, 1, 1, 1},
-        {0, 0, 0, 0}
-    }, {
-        {0, 1, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0}
-    }}
-};
-
-static Tetramino J_Block = {
-    .color = BLUE,
-    .center = {.x = 1.5, .y = 2.5},
-    .data = {
-    {
-        {0, 0, 0, 0},
-        {1, 0, 0, 0},
-        {1, 1, 1, 0},
-        {0, 0, 0, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 1, 1, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 0, 0, 0},
-        {1, 1, 1, 0},
-        {0, 0, 1, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0},
-        {1, 1, 0, 0}
-    }}
-};
-
-static Tetramino L_Block = {
-    .color = ORANGE,
-    .center = {.x = 1.5, .y = 2.5},
-    .data = {
-    {
-        {0, 0, 0, 0},
-        {0, 0, 1, 0},
-        {1, 1, 1, 0},
-        {0, 0, 0, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 1, 0}
-    }, {
-        {0, 0, 0, 0},
-        {0, 0, 0, 0},
-        {1, 1, 1, 0},
-        {1, 0, 0, 0}
-    }, {
-        {0, 0, 0, 0},
-        {1, 1, 0, 0},
-        {0, 1, 0, 0},
-        {0, 1, 0, 0}
-    }}
-};
-
-static Tetramino O_Block = {
-    .color = YELLOW,
-    .center = {.x = 2, .y = 2},
-    .data = {
-        {
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {0, 1, 1, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {0, 1, 1, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {0, 1, 1, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {0, 1, 1, 0},
-            {0, 0, 0, 0}
-        }
-    }
-};
-
-static Tetramino S_Block = {
-    .color = GREEN,
-    .center = {.x = 1.5, .y = 2.5},
-    .data = {
-        {
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {1, 1, 0, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 0, 0},
-            {0, 1, 1, 0},
-            {0, 0, 1, 0},
-        }, {
-            {0, 0, 0, 0},
-            {0, 0, 0, 0},
-            {0, 1, 1, 0},
-            {1, 1, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {1, 0, 0, 0},
-            {1, 1, 0, 0},
-            {0, 1, 0, 0}
-        }
-    }
-};
-
-static Tetramino T_Block = {
-    .color = PURPLE,
-    .center = {.x = 1.5, .y = 2.5},
-    .data = {
-        {
-            {0, 0, 0, 0},
-            {0, 1, 0, 0},
-            {1, 1, 1, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 0, 0},
-            {0, 1, 1, 0},
-            {0, 1, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 0, 0, 0},
-            {1, 1, 1, 0},
-            {0, 1, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 0, 0},
-            {1, 1, 0, 0},
-            {0, 1, 0, 0}
-        }
-    }
-};
-
-static Tetramino Z_Block = {
-    .color = RED,
-    .center = {.x = 1.5, .y = 2.5},
-    .data = {
-        {
-            {0, 0, 0, 0},
-            {1, 1, 0, 0},
-            {0, 1, 1, 0},
-            {0, 0, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 0, 1, 0},
-            {0, 1, 1, 0},
-            {0, 1, 0, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 0, 0, 0},
-            {1, 1, 0, 0},
-            {0, 1, 1, 0}
-        }, {
-            {0, 0, 0, 0},
-            {0, 1, 0, 0},
-            {1, 1, 0, 0},
-            {1, 0, 0, 0}
-        }
-    }
-};
-
-static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block, &S_Block, &T_Block, &Z_Block};
-// static Tetramino* Blocks[] = {&Z_Block};
 
 static TileDeleteInfo tileDeleteInfo;
 static float deleteProgress;
@@ -312,6 +101,7 @@ static int newPieceTextCurrentFrame;
 
 // camera
 static Camera2D camera;
+static Camera2D starCamera;
 static float newZoom;
 static const float zoomSpeed = 0.005;
 static const int frameOffset = 20;  // px
@@ -326,19 +116,6 @@ float dist(Vector2 v1, Vector2 v2) {
 
 bool IsBlank(Color color) {
     return *(unsigned int*)&color == 0;
-}
-
-float distance_acceleration(PlanetState state) {
-    return state.distance.value * pow(state.angle.speed, 2) -
-    (gravity_const * star_mass) / pow(state.distance.value, 2);
-}
-
-float angle_acceleratioin(PlanetState state) {
-    return -2.0f * state.distance.speed * state.angle.speed / state.distance.value;
-}
-
-float new_value(float current_value, float delta_time, float derivative) {
-    return current_value + delta_time * derivative;
 }
 
 void DeleteTilesForReal() {
@@ -418,7 +195,7 @@ void DeleteTilesForReal() {
     }
 }
 
-void draw_tilemap() {
+void DrawBoundaries() {
     // draw tetirs boundaries
     Rectangle rect = {
         .width = ROW_LENGTH * TILE_W,
@@ -429,7 +206,7 @@ void draw_tilemap() {
     rect.y = centerY - rect.height / 2;
 
     Color c = GRAY;
-    c.a = 127;
+    c.a = 180;
     DrawRectangleLinesEx(rect, 2, c);
 
     rect.width = DEATH_LENGTH * TILE_W;
@@ -437,9 +214,11 @@ void draw_tilemap() {
     rect.x = centerX - rect.width / 2;
     rect.y = centerY - rect.height / 2;
     c = RED;
-    c.a = 127;
+    c.a = 180;
     DrawRectangleLinesEx(rect, 2, c);
+}
 
+void draw_tilemap() {
     bool hasOOB = false;
 
     // draw tiles
@@ -476,8 +255,9 @@ void draw_tilemap() {
                 bg.a = tilemapAlpha;
             }
 
-            DrawRectangle(posX, posY, size, size, bg);
-            DrawRectangleLines(posX, posY, size, size, tilemap[i][j]);
+            Rectangle rec = {posX, posY, size, size};
+            DrawRectangleRec(rec, bg);
+            DrawRectangleLinesEx(rec, 2, tilemap[i][j]);
         }
     }
 
@@ -501,12 +281,12 @@ void ResetPlanetState() {
 void GenerateNextTetramino() {
     // TODO: Blocks pool!
     if (next_tetramino.block == NULL) {
-        active_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
+        active_tetramino.block = GetRandomBlock();
     } else {
         active_tetramino.block = next_tetramino.block;
     }
 
-    next_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
+    next_tetramino.block = GetRandomBlock();
     active_tetramino.rot_index = 0;
 }
 
@@ -876,27 +656,9 @@ void draw_tetramino(ActiveTetramino tetramino) {
             };
 
             DrawRectangleRec(coords, bg);
-            DrawRectangleLinesEx(coords, 1, tetramino.block->color);
+            DrawRectangleLinesEx(coords, 2, tetramino.block->color);
         }
     }
-}
-
-Vector2 StateToCoords(PlanetState state, float scale, Vector2 center) {
-    Vector2 result;
-    float dist_to_scale = state.distance.value / dist_scale;
-    result.x = center.x + dist_to_scale * cos(state.angle.value);
-    result.y = center.y + dist_to_scale * sin(state.angle.value);
-    return result;
-}
-
-void UpdatePlanetState(PlanetState* state, float dt) {
-    float dist_acc = distance_acceleration(*state);
-    state->distance.speed = new_value(state->distance.speed, dt, dist_acc);
-    state->distance.value = new_value(state->distance.value, dt, state->distance.speed);
-
-    float angle_acc = angle_acceleratioin(*state);
-    state->angle.speed = new_value(state->angle.speed, dt, angle_acc);
-    state->angle.value = new_value(state->angle.value, dt, state->angle.speed);
 }
 
 float draw_trajectory() {
@@ -907,7 +669,7 @@ float draw_trajectory() {
     Vector2 startPos = StateToCoords(trajectory[0], dist_scale, star_pos);
     Vector2 firstPoint = startPos;
     float maxDist = 0.0f;
-    Color color = RED;
+    Color color = SKYBLUE;
     color.a = 127;
     for (size_t i = 1; i < trajectory_size; i++)
     {
@@ -921,7 +683,7 @@ float draw_trajectory() {
         for (size_t j = 0; j < dt; j++)
         {
             float local_delta_time = UpdateDeltaTime(trajectory[i]);
-            UpdatePlanetState(&trajectory[i], local_delta_time);
+            UpdatePlanetState(&trajectory[i], local_delta_time, star_mass);
         }
 
         Vector2 endPos = StateToCoords(trajectory[i], dist_scale, star_pos);
@@ -1018,6 +780,17 @@ void DrawExplode() {
     }
 }
 
+void DrawStars() {
+    BeginMode2D(starCamera);
+    for (size_t i = 0; i < ARR_SIZE(stars); i++)
+    {
+        DrawCircle(stars[i].x, stars[i].y, stars[i].width, RAYWHITE);
+    }
+    EndMode2D();
+    starCamera.rotation += 0.01f;
+    starCamera.zoom = Remap(camera.zoom, 0.8, 2.0, 0.7, 1.0);
+}
+
 void game_init() {
     gameOver = false;
     explode = false;
@@ -1031,7 +804,6 @@ void game_init() {
     newPieceTextCurrentFrame = newPieceTextFrames;
 
     star_mass = 1.98855 * pow(10, 30);
-    gravity_const = 6.67408 * pow(10, -11);
     delta_time = 3600 * 24;
     dist_scale = 6.5 * pow(10, 8);
 
@@ -1064,17 +836,30 @@ void game_init() {
 
     memset(&explodeMap, 0, sizeof(explodeMap));
 
+    memset(&stars, 0, sizeof(stars));
+    for (size_t i = 0; i < ARR_SIZE(stars); i++)
+    {
+        stars[i].x = GetRandomValue(-SCREEN_WIDTH / 2, SCREEN_WIDTH * 1.5);
+        stars[i].y = GetRandomValue(-SCREEN_HEIGHT / 2, SCREEN_HEIGHT * 1.5);
+        stars[i].width = GetRandomValue(1, 3);
+    }
+
     // camera
     camera.zoom = 1.0f;
     camera.offset = star_pos;
     camera.target = star_pos;
     newZoom = 1.0f;
 
+    starCamera.offset = star_pos;
+    starCamera.target = star_pos;
+    starCamera.zoom = 1.0f;
+    starCamera.rotation = 0.0f;
+
     printf("%s called\n", __FUNCTION__);
 }
 
 screen_t game_update() {
-    UpdatePlanetState(&planet_state, delta_time);
+    UpdatePlanetState(&planet_state, delta_time, star_mass);
 
     if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
         planet_state.angle.speed += pow(10, -9);
@@ -1150,7 +935,9 @@ void game_draw() {
         camera.zoom += zoomSpeed * dir;
     }
 
-    ClearBackground(RAYWHITE);
+    ClearBackground(BLACK);
+
+    DrawStars();
 
     BeginMode2D(camera);
 
@@ -1163,6 +950,8 @@ void game_draw() {
         newZoom = targetScale;
     }
 
+    DrawBoundaries();
+
     if (explode) {
         DrawExplode();
     } else {
@@ -1171,7 +960,7 @@ void game_draw() {
 
     EndMode2D();
 
-    DrawText("Next:", 20, 60, 20, GRAY);
+    DrawText("Next:", 20, 60, 20, LIGHTGRAY);
     draw_tetramino(next_tetramino);
 
     if (explode) {
@@ -1191,13 +980,13 @@ void game_draw() {
     if (newPieceTextCurrentFrame < newPieceTextFrames) {
         char* newPieceText = "Here's your piece\nDon't lose it again!";
         Vector2 size = MeasureTextEx(GetFontDefault(), newPieceText, 20, 1);
-        DrawText(newPieceText, SCREEN_WIDTH / 2 - size.x / 2, SCREEN_HEIGHT / 2 - size.y / 2, 20, GRAY);
+        DrawText(newPieceText, SCREEN_WIDTH / 2 - size.x / 2, 400, 20, LIGHTGRAY);
         newPieceTextCurrentFrame += 1;
     }
 
     char points_text[64] = {0};
     snprintf(points_text, 63, "Score: %d", gamePoints);
-    DrawText(points_text, 20, 20, 20, GRAY);
+    DrawText(points_text, 20, 20, 20, LIGHTGRAY);
 
     EndDrawing();
 }

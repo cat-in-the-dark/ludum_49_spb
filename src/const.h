@@ -4,4 +4,6 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 480
 
+#define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
+
 #endif /* CONST_H */

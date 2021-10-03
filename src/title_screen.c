@@ -5,11 +5,11 @@
 #include "title_screen.h"
 #include "game_screen.h"
 
-static const char* text = "Title screen!";
+static const char* text = "CAT IN THE DARK";
 static Vector2 text_size;
 
 void title_init() {
-    text_size = MeasureTextEx(GetFontDefault(), text, 20, 1);
+    text_size = MeasureTextEx(GetFontDefault(), text, 32, 1);
 }
 
 screen_t title_update() {
@@ -24,8 +24,20 @@ screen_t title_update() {
 
 void title_draw() {
     BeginDrawing();
+
     ClearBackground(RAYWHITE);
-    DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, BLACK);
+
+    int scale = 20;
+    int size = 11 * scale;
+    int startX = SCREEN_WIDTH / 2 - size / 2, startY = SCREEN_HEIGHT / 2 - size / 2 - 50;
+    DrawRectangle(startX, startY, size, size, BLACK);
+    DrawRectangle(startX + 1 * scale, startY + 1 * scale, scale, scale, RAYWHITE);
+    DrawRectangle(startX + 4 * scale, startY + 1 * scale, scale, scale, RAYWHITE);
+    DrawRectangle(startX + 1 * scale, startY + 2 * scale, 4 * scale, 3 * scale, RAYWHITE);
+    DrawRectangle(startX + 1 * scale, startY + 5 * scale, 3 * scale, 6 * scale, RAYWHITE);
+    DrawRectangle(startX + 4 * scale, startY + 6 * scale, 2 * scale, scale, RAYWHITE);
+
+    DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, 360, 32, BLACK);
     EndDrawing();
 }
 
