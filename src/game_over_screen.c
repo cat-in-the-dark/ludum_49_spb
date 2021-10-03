@@ -2,6 +2,7 @@
 
 #include "game_over_screen.h"
 #include "title_screen.h"
+#include "game_screen.h"
 #include "const.h"
 
 #include "raylib.h"
@@ -17,7 +18,7 @@ void go_init() {
 screen_t go_update() {
     if (IsKeyPressed(KEY_ENTER))
     {
-        return title_screen;
+        return game_screen;
     }
     
     return game_over_screen;
@@ -25,12 +26,12 @@ screen_t go_update() {
 
 void go_draw() {
     BeginDrawing();
-    ClearBackground(RAYWHITE);
-    DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, BLACK);
+    ClearBackground(BLACK);
+    DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, LIGHTGRAY);
 
     char points_text[64] = {0};
     snprintf(points_text, 63, "Score: %d", gamePoints);
-    DrawText(points_text, 20, 20, 20, GRAY);
+    DrawText(points_text, 20, 20, 20, LIGHTGRAY);
 
     EndDrawing();
 }

@@ -259,7 +259,7 @@ void draw_tilemap() {
     }
 }
 
-void ResetPlanetState() {
+static void ResetPlanetState() {
     memset(&planet_state, 0, sizeof(planet_state));
     planet_state.distance.value = 1.496 * pow(10, 11);
     planet_state.angle.speed = 1.990986 * pow(10, -7);
@@ -749,7 +749,7 @@ void game_init() {
 
     gameOverProgress = 0;
     gameOverProgress = 0;
-    gameOverColor = RAYWHITE;
+    gameOverColor = BLACK;
     gameOverColor.a = 0;
 
     newPieceTextCurrentFrame = newPieceTextFrames;
@@ -924,7 +924,7 @@ void game_draw() {
 
         char* gameOverText = "GAME OVER!";
         Vector2 text_size = MeasureTextEx(GetFontDefault(), gameOverText, 20, 1);
-        DrawText(gameOverText, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, BLACK);
+        DrawText(gameOverText, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, LIGHTGRAY);
     }
 
     // draw UI after camera
