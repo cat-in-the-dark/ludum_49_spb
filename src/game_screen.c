@@ -21,8 +21,8 @@ typedef struct {
 
 #define TILES_X 10
 #define TILES_Y 10
-#define TILE_W 10 // px
-#define TILE_H 10
+#define TILE_W 16 // px
+#define TILE_H 16
 #define ROW_LENGTH 6
 #define BLOCK_SIZE 4
 
@@ -155,8 +155,8 @@ static Tetramino O_Block = {
     }
 };
 
-// static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
-static Tetramino* Blocks[] = {&O_Block};
+static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
+// static Tetramino* Blocks[] = {&O_Block};
 
 static const char* text = "Game screen!";
 static Vector2 text_size;
@@ -213,6 +213,15 @@ float new_value(float current_value, float delta_time, float derivative) {
 }
 
 void draw_tilemap() {
+
+    // draw tetirs boundaries
+    int width = ROW_LENGTH * TILE_W;
+    int height = ROW_LENGTH * TILE_H;
+    int startX = centerX - width / 2;
+    int startY = centerY - height / 2;
+    DrawRectangleLines(startX, startY, width, height, GRAY);
+
+    // draw tiles
     for (size_t i = 0; i < TILES_X; i++)
     {
         for (size_t j = 0; j < TILES_Y; j++)
@@ -222,8 +231,8 @@ void draw_tilemap() {
                 continue;
             }
 
-            int posX = (i - TILES_X / 2) * TILE_W + SCREEN_WIDTH / 2;
-            int posY = (j - TILES_Y / 2) * TILE_H + SCREEN_HEIGHT / 2;
+            int posX = (i - TILES_X / 2) * TILE_W + centerX;
+            int posY = (j - TILES_Y / 2) * TILE_H + centerY;
             DrawRectangleLines(posX, posY, TILE_W, TILE_H, tilemap[i][j]);
         }
     }
@@ -482,7 +491,7 @@ void MoveSlidingTetramino(ActiveTetramino* block) {
     block->progress = 0;
 }
 
-Rectangle intersect_tiles(ActiveTetramino block) {
+Rectangle intersect_tiles(ActiveTetramino block, bool* empty) {
     Rectangle result = {0};
     Rectangle tileMapRect = {
         .x = tileMapPosX,
@@ -500,6 +509,7 @@ Rectangle intersect_tiles(ActiveTetramino block) {
 
     if (CheckCollisionRecs(tileMapRect, blockRect)) {
         printf("In tilemap!\n");
+        bool local_empty = true;
         for (size_t i = 0; i < TILES_X; i++)
         {
             for (size_t j = 0; j < TILES_Y; j++)
@@ -508,6 +518,7 @@ Rectangle intersect_tiles(ActiveTetramino block) {
                     continue;
                 }
 
+                local_empty = false;
                 int posX = (i - TILES_X / 2) * TILE_W + centerX;
                 int posY = (j - TILES_Y / 2) * TILE_H + centerY;
                 Rectangle tileRect = {
@@ -545,6 +556,8 @@ Rectangle intersect_tiles(ActiveTetramino block) {
                 }
             }
         }
+
+        *empty = local_empty;
     }
 
     return result;
@@ -673,7 +686,18 @@ screen_t game_update() {
 
     delta_time = UpdateDeltaTime(planet_state);
 
-    Rectangle res = intersect_tiles(active_tetramino);
+    bool empty = false;
+    Rectangle res = intersect_tiles(active_tetramino, &empty);
+    if (empty) {
+        printf("Map is empty!\n");
+        if (Vector2Distance(active_tetramino.pos, star_pos) < TILE_W)
+        {
+            printf("Found new center!\n");
+            PlaceTetramino(&active_tetramino);
+            ResetPlanetState();
+            GenerateNextTetramino();
+        }
+    }
     if (res.width > 0 && res.height > 0) {
         // PlaceTetramino();
         sliding_tetramino.block = active_tetramino.block;
