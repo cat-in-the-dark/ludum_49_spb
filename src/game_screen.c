@@ -277,6 +277,7 @@ static const float distThreshold = 0.0001f;
 static PlanetState planet_state = {0};
 
 static bool gameOver = false;
+int gamePoints;
 
 float dist(Vector2 v1, Vector2 v2) {
     Vector2 dist = {.x = v1.x - v2.x, .y = v1.y - v2.y};
@@ -420,6 +421,8 @@ bool CheckGameOver() {
 }
 
 void CheckRows() {
+    int hits = 0;
+
     for (size_t i = 0; i < TILES_X; i++)
     {
         size_t row_start = (TILES_Y - ROW_LENGTH) / 2;
@@ -432,6 +435,7 @@ void CheckRows() {
         }
         
         if (hit) {
+            hits++;
             printf("Filled by Y at x = %lu\n", i);
             size_t di = 1, max_i = TILES_X;
             if (i < TILES_X / 2) {
@@ -472,6 +476,7 @@ void CheckRows() {
         }
         
         if (hit) {
+            hits++;
             printf("Filled by X at y = %lu\n", j);
             size_t dj = 1, max_j = TILES_Y;
             if (j < TILES_Y / 2) {
@@ -499,6 +504,28 @@ void CheckRows() {
                 j = j - 1;
             }
         }
+    }
+
+    switch (hits)
+    {
+    case 1:
+        gamePoints += 40;
+        break;
+    case 2:
+        gamePoints += 100;
+        break;
+    case 3:
+        gamePoints += 300;
+        break;
+    case 4:
+        gamePoints += 1200;
+        break;
+    default:
+        if (hits > 4) {
+            // Is it even possible??
+            gamePoints += 2400;
+        }
+        break;
     }
 }
 
@@ -758,6 +785,7 @@ void draw_trajectory() {
 
 void game_init() {
     gameOver = false;
+    gamePoints = 0;
 
     star_mass = 1.98855 * pow(10, 30);
     gravity_const = 6.67408 * pow(10, -11);
@@ -797,12 +825,12 @@ screen_t game_update() {
     if (IsKeyDown(KEY_DOWN)) {
         planet_state.angle.speed -= pow(10, -9);
     }
-    if (IsKeyDown(KEY_LEFT)) {
-        planet_state.distance.speed += 50;
-    }
-    if (IsKeyDown(KEY_RIGHT)) {
-        planet_state.distance.speed -= 50;
-    }
+    // if (IsKeyDown(KEY_LEFT)) {
+    //     planet_state.distance.speed += 50;
+    // }
+    // if (IsKeyDown(KEY_RIGHT)) {
+    //     planet_state.distance.speed -= 50;
+    // }
 
     if (IsKeyPressed(KEY_LEFT)) {
         active_tetramino.rot_index = (active_tetramino.rot_index + 3) % 4;  // same as -1 % 4
@@ -853,6 +881,10 @@ screen_t game_update() {
 void game_draw() {
     BeginDrawing();
     ClearBackground(RAYWHITE);
+
+    char points_text[64] = {0};
+    snprintf(points_text, 63, "Score: %d", gamePoints);
+    DrawText(points_text, 20, 20, 20, GRAY);
 
     draw_tetramino(active_tetramino);
     draw_tetramino(sliding_tetramino);
