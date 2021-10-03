@@ -728,6 +728,7 @@ void draw_trajectory() {
     PlanetState trajectory[trajectory_size];
     memcpy(&trajectory[0], &planet_state, sizeof(PlanetState));
     Vector2 startPos = StateToCoords(trajectory[0], dist_scale, star_pos);
+    Vector2 firstPoint = Vector2Scale(startPos, 1);
     for (size_t i = 1; i < trajectory_size; i++)
     {
         memcpy(&trajectory[i], &trajectory[i-1], sizeof(PlanetState));
@@ -738,7 +739,19 @@ void draw_trajectory() {
         }
 
         Vector2 endPos = StateToCoords(trajectory[i], dist_scale, star_pos);
+
+
         DrawLineEx(startPos, endPos, 1, RED);
+
+        if (i > 10 && Vector2Distance(endPos, firstPoint) < TILE_W * 2) {
+            return;
+        }
+
+        if (Vector2Distance(endPos, star_pos) < TILE_W)
+        {
+            return;
+        }
+        
         startPos = endPos;
     }    
 }
