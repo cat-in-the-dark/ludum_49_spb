@@ -4,6 +4,7 @@
 #include "const.h"
 #include "title_screen.h"
 #include "game_screen.h"
+#include "start_screen.h"
 
 static const char* text = "CAT IN THE DARK";
 static Vector2 text_size;

@@ -6,4 +6,6 @@
 
 #define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
+#define TILEMAP_ALPHA 100
+
 #endif /* CONST_H */

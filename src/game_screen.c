@@ -14,11 +14,8 @@
 
 #define TILES_X 20
 #define TILES_Y 20
-#define TILE_W 16 // px
-#define TILE_H 16
 #define ROW_LENGTH 8
 #define DEATH_LENGTH 12
-#define BLOCK_SIZE 4
 
 // special alpha value to mark block to be deleted
 #define FLAG_TO_DELETE 224
@@ -33,16 +30,6 @@ typedef struct {
 static Color tilemap[TILES_X][TILES_Y] = {0};
 static MovingPoint explodeMap[TILES_X][TILES_Y] = {0};
 static Rectangle stars[50] = {0};
-
-typedef struct {
-    int rot_index;
-    Vector2 pos;
-    Tetramino* block;
-    // to slide in place
-    Vector2 oldPos;
-    Vector2 targetPos;
-    float progress;  // [0.0, 1.0]
-} ActiveTetramino;
 
 typedef struct {
     bool rows[TILES_Y];
@@ -78,7 +65,7 @@ static float minDeltaTime;
 static float maxDist;
 static float minDist;
 
-static float dist_scale;
+static const float dist_scale = 6.5 * pow(10, 8);
 static ActiveTetramino active_tetramino;
 static ActiveTetramino next_tetramino;
 static ActiveTetramino sliding_tetramino;
@@ -625,42 +612,6 @@ Rectangle intersect_tiles(ActiveTetramino block, bool* empty) {
     return result;
 }
 
-void draw_tetramino(ActiveTetramino tetramino) {
-    if (tetramino.block == NULL) {
-        return;
-    }
-
-    int rot_index = tetramino.rot_index;
-    int (*block)[4] = tetramino.block->data[rot_index];
-
-    float startX = tetramino.pos.x - tetramino.block->center.x * TILE_W;
-    float startY = tetramino.pos.y - tetramino.block->center.y * TILE_H;
-
-    Color bg;
-    memcpy(&bg, &(tetramino.block->color), sizeof(Color));
-    bg.a = 64;
-
-    for (size_t i = 0; i < BLOCK_SIZE; i++)
-    {
-        for (size_t j = 0; j < BLOCK_SIZE; j++)
-        {
-            if (block[i][j] == 0) {
-                continue;
-            }
-
-            Rectangle coords = {
-                .x = startX + j * TILE_W,
-                .y = startY + i * TILE_H, 
-                .width = TILE_W,
-                .height = TILE_H
-            };
-
-            DrawRectangleRec(coords, bg);
-            DrawRectangleLinesEx(coords, 2, tetramino.block->color);
-        }
-    }
-}
-
 float draw_trajectory() {
     const size_t trajectory_size = 50;
     const int dt = 10;
@@ -780,7 +731,7 @@ void DrawExplode() {
     }
 }
 
-void DrawStars() {
+static void DrawStars() {
     BeginMode2D(starCamera);
     for (size_t i = 0; i < ARR_SIZE(stars); i++)
     {
@@ -805,7 +756,6 @@ void game_init() {
 
     star_mass = 1.98855 * pow(10, 30);
     delta_time = 3600 * 24;
-    dist_scale = 6.5 * pow(10, 8);
 
     maxDeltaTime = 3600 * 24;
     minDeltaTime = 3600;
