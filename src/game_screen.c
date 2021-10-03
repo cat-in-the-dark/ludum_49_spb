@@ -873,16 +873,7 @@ screen_t game_update() {
 
     bool empty = false;
     Rectangle res = intersect_tiles(active_tetramino, &empty);
-    if (empty) {
-        printf("Map is empty!\n");
-        if (Vector2Distance(active_tetramino.pos, star_pos) < TILE_W)
-        {
-            printf("Found new center!\n");
-            PlaceTetramino(&active_tetramino);
-            ResetPlanetState();
-            GenerateNextTetramino();
-        }
-    }
+
     if (res.width > 0 && res.height > 0) {
         // PlaceTetramino();
         sliding_tetramino.block = active_tetramino.block;
@@ -890,6 +881,12 @@ screen_t game_update() {
         sliding_tetramino.pos.y = active_tetramino.pos.y;
         sliding_tetramino.rot_index = active_tetramino.rot_index;
         sliding_tetramino.progress = 1.1;  // to check where to slide it first
+        ResetPlanetState();
+        GenerateNextTetramino();
+    } else if (Vector2Distance(active_tetramino.pos, star_pos) < TILE_W / 2)
+    {
+        printf("Found new center!\n");
+        PlaceTetramino(&active_tetramino);
         ResetPlanetState();
         GenerateNextTetramino();
     }
