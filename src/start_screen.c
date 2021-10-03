@@ -15,7 +15,7 @@ static Rectangle stars[50];
 static ActiveTetramino center;
 static ActiveTetramino piece;
 static Camera2D pieceCam;
-static const float dist_scale = 6.5 * pow(10, 8);
+// static const float dist_scale = 6.5 * pow(10, 8);
 
 static void DrawStars() {
     for (size_t i = 0; i < ARR_SIZE(stars); i++)

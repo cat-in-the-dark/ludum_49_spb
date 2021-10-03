@@ -65,7 +65,7 @@ static float minDeltaTime;
 static float maxDist;
 static float minDist;
 
-static const float dist_scale = 6.5 * pow(10, 8);
+static float dist_scale;
 static ActiveTetramino active_tetramino;
 static ActiveTetramino next_tetramino;
 static ActiveTetramino sliding_tetramino;
@@ -756,6 +756,7 @@ void game_init() {
 
     star_mass = 1.98855 * pow(10, 30);
     delta_time = 3600 * 24;
+    dist_scale = 6.5 * pow(10, 8);
 
     maxDeltaTime = 3600 * 24;
     minDeltaTime = 3600;
