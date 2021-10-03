@@ -20,8 +20,8 @@ typedef struct {
     SpVector2 angle;
 } PlanetState;
 
-#define TILES_X 16
-#define TILES_Y 16
+#define TILES_X 20
+#define TILES_Y 20
 #define TILE_W 16 // px
 #define TILE_H 16
 #define ROW_LENGTH 8
@@ -30,10 +30,18 @@ typedef struct {
 
 // special alpha value to mark block to be deleted
 #define FLAG_TO_DELETE 224
+#define FLAG_OOB 223
 
 #define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
-static Color tilemap[TILES_Y][TILES_X] = {0};
+typedef struct {
+    Color color;
+    Vector2 pos;
+    Vector2 speed;
+} MovingPoint;
+
+static Color tilemap[TILES_X][TILES_Y] = {0};
+static MovingPoint explodeMap[TILES_X][TILES_Y] = {0};
 
 typedef struct {
     Color color;
@@ -255,6 +263,16 @@ static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block, &S_Block, 
 static TileDeleteInfo tileDeleteInfo;
 static float deleteProgress;
 
+// game over visualization
+static const float coloLerpSpeed = 0.02;
+static const int gameOverProgressSpeed = 2;
+static int gameOverProgress;
+static const int gameOverValue = 255;
+static const int tilemapAlpha = 100;
+static const int gameOverAlphaThreshold = 5;
+static bool explode;
+static Color gameOverColor;
+
 static const char* text = "Game screen!";
 static Vector2 text_size;
 static Vector2 star_pos;
@@ -422,6 +440,8 @@ void draw_tilemap() {
     c.a = 127;
     DrawRectangleLinesEx(rect, 2, c);
 
+    bool hasOOB = false;
+
     // draw tiles
     for (size_t i = 0; i < TILES_X; i++)
     {
@@ -437,11 +457,25 @@ void draw_tilemap() {
                 size = deleteProgress;
             }
 
-            Color bg = tilemap[i][j];
-            bg.a = 100;
-
             int posX = (i - TILES_X / 2) * TILE_W + centerX + (TILE_W - size) / 2;
             int posY = (j - TILES_Y / 2) * TILE_H + centerY + (TILE_H - size) / 2;
+
+            if (tilemap[i][j].a == FLAG_OOB) {
+                hasOOB = true;
+                posX += GetRandomValue(-2, 2);
+                posY += GetRandomValue(-2, 2);
+                tilemap[i][j].r = Lerp(tilemap[i][j].r, 255, coloLerpSpeed);
+                tilemap[i][j].g = Lerp(tilemap[i][j].g, 0, coloLerpSpeed);
+                tilemap[i][j].b = Lerp(tilemap[i][j].b, 0, coloLerpSpeed);
+            }
+
+            Color bg = tilemap[i][j];
+            if (tilemap[i][j].a == FLAG_OOB) {
+                bg.a = gameOverProgress;
+            } else {
+                bg.a = tilemapAlpha;
+            }
+
             DrawRectangle(posX, posY, size, size, bg);
             DrawRectangleLines(posX, posY, size, size, tilemap[i][j]);
         }
@@ -451,6 +485,10 @@ void draw_tilemap() {
         deleteProgress -= 1;
     } else if (deleteProgress == 0) {
         DeleteTilesForReal();
+    }
+
+    if (hasOOB && gameOverProgress < gameOverValue) {
+        gameOverProgress += gameOverProgressSpeed;
     }
 }
 
@@ -527,7 +565,7 @@ void GetTetraminoTilemapPos(ActiveTetramino block, int (*coords)[2] /* int[4][2]
     }
 }
 
-bool CheckGameOver() {
+void CheckTilesOOB() {
     int startX = (TILES_X - DEATH_LENGTH) / 2, startY = (TILES_Y - DEATH_LENGTH) / 2;
     int endX = startX + DEATH_LENGTH, endY = startY + DEATH_LENGTH;
     for (size_t i = 0; i < TILES_X; i++)
@@ -538,13 +576,17 @@ bool CheckGameOver() {
             {
                 if(!IsBlank(tilemap[i][j])) {
                     printf("OOB tile at %lu %lu!\n", i, j);
-                    return true;
+                    tilemap[i][j].a = FLAG_OOB;
+                    if (gameOverProgress == 0) {
+                        gameOverProgress = tilemapAlpha;
+                    }
+                    // return true;
                 }
             }
         }
     }
 
-    return false;
+    // return false;
 }
 
 void CheckRows() {
@@ -635,9 +677,10 @@ void PlaceTetramino(ActiveTetramino* block) {
     }
 
     CheckRows();
-    if (CheckGameOver()) {
-        gameOver = true;
-    }
+    // if (CheckTilesOOB()) {
+    //     gameOver = true;
+    // }
+    CheckTilesOOB();
 }
 
 bool CanMove(ActiveTetramino* block, int dx, int dy) {
@@ -909,9 +952,81 @@ void DetectPieceTooFar(ActiveTetramino piece) {
     }
 }
 
+void InitExplode() {
+    float speedMin = 2, speedMax = 6;
+    float distMin = 0, distMax = Vector2Distance(GetTilePos(0, 0), star_pos);
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        for (size_t j = 0; j < TILES_Y; j++)
+        {
+            if (IsBlank(tilemap[i][j]))
+            {
+                continue;
+            }
+
+            explodeMap[i][j].color = tilemap[i][j];
+            explodeMap[i][j].color.a = tilemapAlpha;
+            explodeMap[i][j].pos = GetTilePos(i, j);
+            float dist = Vector2Distance(explodeMap[i][j].pos, star_pos);
+            float angle = Vector2Angle(star_pos, explodeMap[i][j].pos) * PI / 180;
+            float speed = Remap(dist, distMin, distMax, speedMin, speedMax);
+            explodeMap[i][j].speed.x = speed * cos(angle);
+            explodeMap[i][j].speed.y = speed * sin(angle);
+        }
+    }
+}
+
+void UpdateExplode() {
+    float acc = 0.01;
+    float fadeSpeed = 1;
+
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        for (size_t j = 0; j < TILES_Y; j++)
+        {
+            if (IsBlank(explodeMap[i][j].color)) {
+                continue;
+            }
+
+            explodeMap[i][j].pos = Vector2Add(explodeMap[i][j].pos, explodeMap[i][j].speed);
+            explodeMap[i][j].speed = Vector2Add(explodeMap[i][j].speed, 
+                Vector2Scale(Vector2Normalize(explodeMap[i][j].speed), -acc));
+            if (explodeMap[i][j].color.a > 0) {
+                explodeMap[i][j].color.a -= fadeSpeed;
+            }
+        }
+    }
+}
+
+void DrawExplode() {
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        for (size_t j = 0; j < TILES_Y; j++)
+        {
+            MovingPoint pt = explodeMap[i][j];
+            if (IsBlank(pt.color))
+            {
+                continue;
+            }
+
+            int borderAlpha = Remap(pt.color.a, 0, tilemapAlpha, 0, 255);
+            Color borderColor = pt.color;
+            borderColor.a = borderAlpha;
+            DrawRectangle(pt.pos.x, pt.pos.y, TILE_W, TILE_H, pt.color);
+            DrawRectangleLines(pt.pos.x, pt.pos.y, TILE_W, TILE_H, borderColor);
+        }   
+    }
+}
+
 void game_init() {
     gameOver = false;
+    explode = false;
     gamePoints = 0;
+
+    gameOverProgress = 0;
+    gameOverProgress = 0;
+    gameOverColor = RAYWHITE;
+    gameOverColor.a = 0;
 
     newPieceTextCurrentFrame = newPieceTextFrames;
 
@@ -946,6 +1061,8 @@ void game_init() {
 
     memset(&tileDeleteInfo, 0, sizeof(TileDeleteInfo));
     deleteProgress = 0;
+
+    memset(&explodeMap, 0, sizeof(explodeMap));
 
     // camera
     camera.zoom = 1.0f;
@@ -1004,6 +1121,17 @@ screen_t game_update() {
 
     DetectPieceTooFar(active_tetramino);
 
+    if (abs(gameOverProgress - gameOverValue) < gameOverAlphaThreshold) {
+        printf("Game Over! %d\n", gameOverProgress);
+        explode = true;
+        InitExplode();
+        gameOverProgress = 1000; // dirty hack to init explode once
+    }
+
+    if (explode) {
+        UpdateExplode();
+    }
+
     if (gameOver) {
         return game_over_screen;
     } else {
@@ -1035,9 +1163,29 @@ void game_draw() {
         newZoom = targetScale;
     }
 
-    draw_tilemap();
+    if (explode) {
+        DrawExplode();
+    } else {
+        draw_tilemap();
+    }
 
     EndMode2D();
+
+    DrawText("Next:", 20, 60, 20, GRAY);
+    draw_tetramino(next_tetramino);
+
+    if (explode) {
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, gameOverColor);
+        gameOverColor.a += 2;
+
+        if (gameOverColor.a >= 250) {
+            gameOver = true;
+        }
+
+        char* gameOverText = "GAME OVER!";
+        Vector2 text_size = MeasureTextEx(GetFontDefault(), gameOverText, 20, 1);
+        DrawText(gameOverText, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, BLACK);
+    }
 
     // draw UI after camera
     if (newPieceTextCurrentFrame < newPieceTextFrames) {
@@ -1050,10 +1198,6 @@ void game_draw() {
     char points_text[64] = {0};
     snprintf(points_text, 63, "Score: %d", gamePoints);
     DrawText(points_text, 20, 20, 20, GRAY);
-
-    DrawText("Next:", 20, 60, 20, GRAY);
-    draw_tetramino(next_tetramino);
-
 
     EndDrawing();
 }
