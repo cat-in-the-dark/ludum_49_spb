@@ -13,7 +13,6 @@ void title_init() {
 }
 
 screen_t title_update() {
-    printf("%s called\n", __FUNCTION__);
     if (IsKeyPressed(KEY_ENTER))
     {
         printf("enter pressed!\n");

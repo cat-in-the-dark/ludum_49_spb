@@ -8,6 +8,7 @@
 
 #include "const.h"
 #include "game_screen.h"
+#include "game_over_screen.h"
 
 typedef struct {
     float value;
@@ -19,11 +20,12 @@ typedef struct {
     SpVector2 angle;
 } PlanetState;
 
-#define TILES_X 10
-#define TILES_Y 10
+#define TILES_X 16
+#define TILES_Y 16
 #define TILE_W 16 // px
 #define TILE_H 16
-#define ROW_LENGTH 6
+#define ROW_LENGTH 8
+#define DEATH_LENGTH 12
 #define BLOCK_SIZE 4
 
 #define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
@@ -190,6 +192,8 @@ static const float distThreshold = 0.0001f;
 
 static PlanetState planet_state = {0};
 
+static bool gameOver = false;
+
 float dist(Vector2 v1, Vector2 v2) {
     Vector2 dist = {.x = v1.x - v2.x, .y = v1.y - v2.y};
     return sqrt(dist.x * dist.x + dist.y * dist.y);
@@ -220,6 +224,12 @@ void draw_tilemap() {
     int startX = centerX - width / 2;
     int startY = centerY - height / 2;
     DrawRectangleLines(startX, startY, width, height, GRAY);
+
+    width = DEATH_LENGTH * TILE_W;
+    height = DEATH_LENGTH * TILE_H;
+    startX = centerX - width / 2;
+    startY = centerY - height / 2;
+    DrawRectangleLines(startX, startY, width, height, RED);
 
     // draw tiles
     for (size_t i = 0; i < TILES_X; i++)
@@ -303,6 +313,26 @@ void GetTetraminoTilemapPos(ActiveTetramino block, int (*coords)[2] /* int[4][2]
             idx++;
         }
     }
+}
+
+bool CheckGameOver() {
+    int startX = (TILES_X - DEATH_LENGTH) / 2, startY = (TILES_Y - DEATH_LENGTH) / 2;
+    int endX = startX + DEATH_LENGTH, endY = startY + DEATH_LENGTH;
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        for (size_t j = 0; j < TILES_Y; j++)
+        {
+            if (i < startX || i >= endX || j < startY || j >= endY)
+            {
+                if(!IsBlank(tilemap[i][j])) {
+                    printf("OOB tile at %lu %lu!\n", i, j);
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 void CheckRows() {
@@ -398,6 +428,9 @@ void PlaceTetramino(ActiveTetramino* block) {
     }
 
     CheckRows();
+    if (CheckGameOver()) {
+        gameOver = true;
+    }
 }
 
 bool CanMove(ActiveTetramino* block, int dx, int dy) {
@@ -508,7 +541,6 @@ Rectangle intersect_tiles(ActiveTetramino block, bool* empty) {
     };
 
     if (CheckCollisionRecs(tileMapRect, blockRect)) {
-        printf("In tilemap!\n");
         bool local_empty = true;
         for (size_t i = 0; i < TILES_X; i++)
         {
@@ -628,6 +660,8 @@ void draw_trajectory() {
 }
 
 void game_init() {
+    gameOver = false;
+
     star_mass = 1.98855 * pow(10, 30);
     gravity_const = 6.67408 * pow(10, -11);
     delta_time = 3600 * 24;
@@ -648,10 +682,11 @@ void game_init() {
     star_pos.x = SCREEN_WIDTH / 2;
     star_pos.y = SCREEN_HEIGHT / 2;
 
-    tilemap[4][4] = RED;
-    tilemap[4][5] = GREEN;
-    tilemap[5][4] = YELLOW;
-    tilemap[5][5] = BLUE;
+    memset(tilemap, 0, sizeof(tilemap));
+    tilemap[TILES_X/2-1][TILES_Y/2-1] = RED;
+    tilemap[TILES_X/2-1][TILES_Y/2] = GREEN;
+    tilemap[TILES_X/2][TILES_Y/2-1] = YELLOW;
+    tilemap[TILES_X/2][TILES_Y/2] = BLUE;
 
     printf("%s called\n", __FUNCTION__);
 }
@@ -711,7 +746,11 @@ screen_t game_update() {
 
     MoveSlidingTetramino(&sliding_tetramino);
 
-    return game_screen;
+    if (gameOver) {
+        return game_over_screen;
+    } else {
+        return game_screen;
+    }
 }
 
 void game_draw() {
