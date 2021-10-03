@@ -262,6 +262,7 @@ static float minDist;
 
 static float dist_scale;
 static ActiveTetramino active_tetramino;
+static ActiveTetramino next_tetramino;
 static ActiveTetramino sliding_tetramino;
 
 static const int centerX = SCREEN_WIDTH / 2;
@@ -326,8 +327,12 @@ void draw_tilemap() {
                 continue;
             }
 
+            Color bg;
+            memcpy(&bg, &(tilemap[i][j]), sizeof(Color));
+            bg.a = 100;
             int posX = (i - TILES_X / 2) * TILE_W + centerX;
             int posY = (j - TILES_Y / 2) * TILE_H + centerY;
+            DrawRectangle(posX, posY, TILE_W, TILE_H, bg);
             DrawRectangleLines(posX, posY, TILE_W, TILE_H, tilemap[i][j]);
         }
     }
@@ -341,7 +346,13 @@ void ResetPlanetState() {
 
 void GenerateNextTetramino() {
     // TODO: Blocks pool!
-    active_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
+    if (next_tetramino.block == NULL) {
+        active_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
+    } else {
+        active_tetramino.block = next_tetramino.block;
+    }
+
+    next_tetramino.block = Blocks[GetRandomValue(0, ARR_SIZE(Blocks) - 1)];
     active_tetramino.rot_index = 0;
 }
 
@@ -717,6 +728,10 @@ void draw_tetramino(ActiveTetramino tetramino) {
     float startX = tetramino.pos.x - tetramino.block->center.x * TILE_W;
     float startY = tetramino.pos.y - tetramino.block->center.y * TILE_H;
 
+    Color bg;
+    memcpy(&bg, &(tetramino.block->color), sizeof(Color));
+    bg.a = 64;
+
     for (size_t i = 0; i < BLOCK_SIZE; i++)
     {
         for (size_t j = 0; j < BLOCK_SIZE; j++)
@@ -725,8 +740,15 @@ void draw_tetramino(ActiveTetramino tetramino) {
                 continue;
             }
 
-            DrawRectangleLines(startX + j * TILE_W, startY + i * TILE_H, 
-                TILE_W, TILE_H, tetramino.block->color);
+            Rectangle coords = {
+                .x = startX + j * TILE_W,
+                .y = startY + i * TILE_H, 
+                .width = TILE_W,
+                .height = TILE_H
+            };
+
+            DrawRectangleRec(coords, bg);
+            DrawRectangleLinesEx(coords, 1, tetramino.block->color);
         }
     }
 }
@@ -774,7 +796,7 @@ void draw_trajectory() {
             return;
         }
 
-        if (Vector2Distance(endPos, star_pos) < TILE_W)
+        if (Vector2Distance(endPos, star_pos) < TILE_W * 2)
         {
             return;
         }
@@ -798,6 +820,8 @@ void game_init() {
     minDist = 3.5 * pow(10, 8);
 
     sliding_tetramino.block = NULL;
+    next_tetramino.pos.x = 110;
+    next_tetramino.pos.y = 80;
 
     text_size = MeasureTextEx(GetFontDefault(), text, 20, 1);
 
@@ -886,8 +910,11 @@ void game_draw() {
     snprintf(points_text, 63, "Score: %d", gamePoints);
     DrawText(points_text, 20, 20, 20, GRAY);
 
+    DrawText("Next:", 20, 60, 20, GRAY);
+
     draw_tetramino(active_tetramino);
     draw_tetramino(sliding_tetramino);
+    draw_tetramino(next_tetramino);
     draw_trajectory();
     draw_tilemap();
 
