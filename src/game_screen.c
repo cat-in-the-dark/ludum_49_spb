@@ -28,6 +28,9 @@ typedef struct {
 #define DEATH_LENGTH 12
 #define BLOCK_SIZE 4
 
+// special alpha value to mark block to be deleted
+#define FLAG_TO_DELETE 224
+
 #define ARR_SIZE(X) (sizeof(X) / sizeof(X[0]))
 
 static Color tilemap[TILES_Y][TILES_X] = {0};
@@ -47,6 +50,11 @@ typedef struct {
     Vector2 targetPos;
     float progress;  // [0.0, 1.0]
 } ActiveTetramino;
+
+typedef struct {
+    bool rows[TILES_Y];
+    bool columns[TILES_X];
+} TileDeleteInfo;
 
 static Tetramino I_Block = {
     .color = SKYBLUE,
@@ -244,6 +252,9 @@ static Tetramino Z_Block = {
 static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block, &S_Block, &T_Block, &Z_Block};
 // static Tetramino* Blocks[] = {&Z_Block};
 
+static TileDeleteInfo tileDeleteInfo;
+static float deleteProgress;
+
 static const char* text = "Game screen!";
 static Vector2 text_size;
 static Vector2 star_pos;
@@ -308,8 +319,84 @@ float new_value(float current_value, float delta_time, float derivative) {
     return current_value + delta_time * derivative;
 }
 
-void draw_tilemap() {
+void DeleteTilesForReal() {
+    for (size_t i = 0; i < TILES_X; i++)
+    {
+        if (tileDeleteInfo.columns[i])
+        {
+            size_t di = 1, max_i = TILES_X;
+            if (i < TILES_X / 2) {
+                printf("Move right\n");
+                di = -1;
+                max_i = 0;
+            } else {
+                printf("Move left\n");
+            }
 
+            for (size_t i1 = i; i1 != max_i; i1 = i1 + di)
+            {
+                if ((di > 0 && i1 == TILES_X - 1) || (di < 0 && i1 == 0)) {
+                    tileDeleteInfo.columns[i1] = false;
+                } else {
+                    tileDeleteInfo.columns[i1] = tileDeleteInfo.columns[i1 + di];
+                }
+
+                for (size_t j = 0; j < TILES_Y; j++)
+                {
+                    if ((di > 0 && i1 == TILES_X - 1) || (di < 0 && i1 == 0)) {
+                        tilemap[i1][j] = BLANK;
+                    } else {
+                        tilemap[i1][j] = tilemap[i1 + di][j];
+                    }
+                }
+            }
+
+            // check same column again
+            if (di > 0) {
+                i = i - 1;
+            }
+        }
+    }
+
+    for (size_t j = 0; j < TILES_Y; j++)
+    {
+        if (tileDeleteInfo.rows[j]) {
+            size_t dj = 1, max_j = TILES_Y;
+            if (j < TILES_Y / 2) {
+                printf("Move down\n");
+                dj = -1;
+                max_j = 0;
+            } else {
+                printf("Move up\n");
+            }
+
+            for (size_t j1 = j; j1 != max_j; j1 = j1 + dj)
+            {
+                if ((dj > 0 && j1 == TILES_Y - 1) || (dj < 0 && j1 == 0)) {
+                    tileDeleteInfo.rows[j1] = false;
+                } else {
+                    tileDeleteInfo.rows[j1] = tileDeleteInfo.rows[j1 + dj];
+                }
+
+                for (size_t i = 0; i < TILES_X; i++)
+                {
+                    if ((dj > 0 && j1 == TILES_Y - 1) || (dj < 0 && j1 == 0)) {
+                        tilemap[i][j1] = BLANK;
+                    } else {
+                        tilemap[i][j1] = tilemap[i][j1+dj];
+                    }
+                }
+            }
+
+            // check same row again
+            if (dj > 0) {
+                j = j -1;
+            }
+        }
+    }
+}
+
+void draw_tilemap() {
     // draw tetirs boundaries
     Rectangle rect = {
         .width = ROW_LENGTH * TILE_W,
@@ -341,14 +428,25 @@ void draw_tilemap() {
                 continue;
             }
 
-            Color bg;
-            memcpy(&bg, &(tilemap[i][j]), sizeof(Color));
+            int size = TILE_W;
+            if (tilemap[i][j].a == FLAG_TO_DELETE) {
+                size = deleteProgress;
+            }
+
+            Color bg = tilemap[i][j];
             bg.a = 100;
-            int posX = (i - TILES_X / 2) * TILE_W + centerX;
-            int posY = (j - TILES_Y / 2) * TILE_H + centerY;
-            DrawRectangle(posX, posY, TILE_W, TILE_H, bg);
-            DrawRectangleLines(posX, posY, TILE_W, TILE_H, tilemap[i][j]);
+
+            int posX = (i - TILES_X / 2) * TILE_W + centerX + (TILE_W - size) / 2;
+            int posY = (j - TILES_Y / 2) * TILE_H + centerY + (TILE_H - size) / 2;
+            DrawRectangle(posX, posY, size, size, bg);
+            DrawRectangleLines(posX, posY, size, size, tilemap[i][j]);
         }
+    }
+
+    if (deleteProgress > 0) {
+        deleteProgress -= 1;
+    } else if (deleteProgress == 0) {
+        DeleteTilesForReal();
     }
 }
 
@@ -462,29 +560,12 @@ void CheckRows() {
         if (hit) {
             hits++;
             printf("Filled by Y at x = %lu\n", i);
-            size_t di = 1, max_i = TILES_X;
-            if (i < TILES_X / 2) {
-                printf("Move right\n");
-                di = -1;
-                max_i = 0;
-            } else {
-                printf("Move left\n");
-            }
-            for (size_t i1 = i; i1 != max_i; i1 = i1 + di)
+            tileDeleteInfo.columns[i] = true;
+            for (size_t j1 = 0; j1 < TILES_Y; j1++)
             {
-                for (size_t j1 = 0; j1 < TILES_Y; j1++)
-                {
-                    if ((di > 0 && i1 == TILES_X - 1) || (di < 0 && i1 == 0)) {
-                        tilemap[i1][j1] = BLANK;
-                    } else {
-                        tilemap[i1][j1] = tilemap[i1 + di][j1];
-                    }
-                }
-            }
-
-            // check same row again
-            if (di > 0) {
-                i = i - 1;
+               if (!IsBlank(tilemap[i][j1])) {
+                   tilemap[i][j1].a = FLAG_TO_DELETE;
+               }
             }
         }
     }
@@ -503,32 +584,18 @@ void CheckRows() {
         if (hit) {
             hits++;
             printf("Filled by X at y = %lu\n", j);
-            size_t dj = 1, max_j = TILES_Y;
-            if (j < TILES_Y / 2) {
-                printf("Move down\n");
-                dj = -1;
-                max_j = 0;
-            } else {
-                printf("Move up\n");
-            }
-
-            for (size_t j1 = j; j1 != max_j; j1 = j1 + dj)
+            tileDeleteInfo.rows[j] = true;
+            for (size_t i1 = 0; i1 < TILES_X; i1++)
             {
-                for (size_t i1 = 0; i1 < TILES_X; i1++)
-                {
-                    if ((dj > 0 && j1 == TILES_Y - 1) || (dj < 0 && j1 == 0)) {
-                        tilemap[i1][j1] = BLANK;
-                    } else {
-                        tilemap[i1][j1] = tilemap[i1][j1+dj];
-                    }
+                if (!IsBlank(tilemap[i1][j])) {
+                    tilemap[i1][j].a = FLAG_TO_DELETE;
                 }
             }
-
-            // check same column again
-            if (dj > 0) {
-                j = j - 1;
-            }
         }
+    }
+
+    if (hits > 0) {
+        deleteProgress = TILE_W;
     }
 
     switch (hits)
@@ -856,11 +923,15 @@ void game_init() {
     star_pos.x = SCREEN_WIDTH / 2;
     star_pos.y = SCREEN_HEIGHT / 2;
 
+    // tiles
     memset(tilemap, 0, sizeof(tilemap));
     tilemap[TILES_X/2-1][TILES_Y/2-1] = RED;
     tilemap[TILES_X/2-1][TILES_Y/2] = GREEN;
     tilemap[TILES_X/2][TILES_Y/2-1] = YELLOW;
     tilemap[TILES_X/2][TILES_Y/2] = BLUE;
+
+    memset(&tileDeleteInfo, 0, sizeof(TileDeleteInfo));
+    deleteProgress = 0;
 
     // camera
     camera.zoom = 1.0f;
