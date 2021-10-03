@@ -157,8 +157,92 @@ static Tetramino O_Block = {
     }
 };
 
-static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block};
-// static Tetramino* Blocks[] = {&O_Block};
+static Tetramino S_Block = {
+    .color = GREEN,
+    .center = {.x = 1.5, .y = 2.5},
+    .data = {
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {1, 1, 0, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 0, 0},
+            {0, 1, 1, 0},
+            {0, 0, 1, 0},
+        }, {
+            {0, 0, 0, 0},
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {1, 1, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {1, 0, 0, 0},
+            {1, 1, 0, 0},
+            {0, 1, 0, 0}
+        }
+    }
+};
+
+static Tetramino T_Block = {
+    .color = PURPLE,
+    .center = {.x = 1.5, .y = 2.5},
+    .data = {
+        {
+            {0, 0, 0, 0},
+            {0, 1, 0, 0},
+            {1, 1, 1, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 0, 0, 0},
+            {1, 1, 1, 0},
+            {0, 1, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 0, 0},
+            {1, 1, 0, 0},
+            {0, 1, 0, 0}
+        }
+    }
+};
+
+static Tetramino Z_Block = {
+    .color = RED,
+    .center = {.x = 1.5, .y = 2.5},
+    .data = {
+        {
+            {0, 0, 0, 0},
+            {1, 1, 0, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 0, 1, 0},
+            {0, 1, 1, 0},
+            {0, 1, 0, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 0, 0, 0},
+            {1, 1, 0, 0},
+            {0, 1, 1, 0}
+        }, {
+            {0, 0, 0, 0},
+            {0, 1, 0, 0},
+            {1, 1, 0, 0},
+            {1, 0, 0, 0}
+        }
+    }
+};
+
+static Tetramino* Blocks[] = {&I_Block, &L_Block, &J_Block, &O_Block, &S_Block, &T_Block, &Z_Block};
+// static Tetramino* Blocks[] = {&Z_Block};
 
 static const char* text = "Game screen!";
 static Vector2 text_size;
