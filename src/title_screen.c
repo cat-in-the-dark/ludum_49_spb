@@ -24,8 +24,6 @@ screen_t title_update() {
 }
 
 void title_draw() {
-    BeginDrawing();
-
     ClearBackground(BLACK);
 
     int scale = 20;
@@ -41,7 +39,6 @@ void title_draw() {
 
     DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, 360, 32, LIGHTGRAY);
     DrawText("Press [Enter]", SCREEN_WIDTH / 2 - text_size.x / 2, 400, 20, LIGHTGRAY);
-    EndDrawing();
 }
 
 void title_close() {

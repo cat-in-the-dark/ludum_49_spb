@@ -876,8 +876,6 @@ screen_t game_update() {
 }
 
 void game_draw() {
-    BeginDrawing();
-
     // zoom interpolation
     float dif = camera.zoom - newZoom;
     if (fabs(dif) > zoomSpeed)
@@ -938,8 +936,6 @@ void game_draw() {
     char points_text[64] = {0};
     snprintf(points_text, 63, "Score: %d", gamePoints);
     DrawText(points_text, 20, 20, 20, LIGHTGRAY);
-
-    EndDrawing();
 }
 
 void game_close() {

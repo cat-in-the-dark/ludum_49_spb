@@ -25,15 +25,12 @@ screen_t go_update() {
 }
 
 void go_draw() {
-    BeginDrawing();
     ClearBackground(BLACK);
     DrawText(text, SCREEN_WIDTH / 2 - text_size.x / 2, text_size.y + 10, 20, LIGHTGRAY);
 
     char points_text[64] = {0};
     snprintf(points_text, 63, "Score: %d", gamePoints);
     DrawText(points_text, 20, 20, 20, LIGHTGRAY);
-
-    EndDrawing();
 }
 
 void go_close() {

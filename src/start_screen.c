@@ -116,7 +116,6 @@ screen_t start_update() {
 }
 
 void start_draw() {
-    BeginDrawing();
     ClearBackground(BLACK);
 
     BeginMode2D(pieceCam);
@@ -134,8 +133,6 @@ void start_draw() {
     }
     fade.a = alpha;
     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, fade);
-
-    EndDrawing();
 }
 
 void start_close() {
