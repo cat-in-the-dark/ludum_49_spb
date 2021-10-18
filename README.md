@@ -7,6 +7,7 @@ Coded for Ludum Dare 49 in 48h
 ![Cover](/assets/cover.gif)
 
 ## [Play on itch.io](https://catinthedark.itch.io/orbtris)
+## [Entry on ldjam.com](https://ldjam.com/events/ludum-dare/49/orbitris)
 
 ### Controls
 
