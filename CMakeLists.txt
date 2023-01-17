@@ -7,7 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE) # don't build the supplied examples
 set(BUILD_GAMES    OFF CACHE BOOL "" FORCE) # or games
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar")
+if (NOT MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-multichar")
+endif()
 
 if (EMSCRIPTEN)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s USE_GLFW=3 -s ASSERTIONS=1 -s WASM=1 -s ASYNCIFY")

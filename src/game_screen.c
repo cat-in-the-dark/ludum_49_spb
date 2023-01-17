@@ -16,6 +16,7 @@
 #define TILES_Y 20
 #define ROW_LENGTH 8
 #define DEATH_LENGTH 12
+#define TRAJECTORY_SIZE 50
 
 // special alpha value to mark block to be deleted
 #define FLAG_TO_DELETE 224
@@ -74,8 +75,8 @@ static const int centerX = SCREEN_WIDTH / 2;
 static const int centerY = SCREEN_HEIGHT / 2;
 static const int tileMapWidth = TILES_X * TILE_W;
 static const int tileMapHeight = TILES_Y * TILE_H;
-static const int tileMapPosX = centerX - tileMapWidth / 2;
-static const int tileMapPosY = centerY - tileMapHeight / 2;
+static const int tileMapPosX = (SCREEN_WIDTH - TILES_X * TILE_W) / 2;
+static const int tileMapPosY = (SCREEN_HEIGHT - TILES_Y * TILE_H) / 2;
 
 static const float progressSpeed = 0.05f;
 static const float distThreshold = 0.0001f;
@@ -435,7 +436,7 @@ void CheckRows() {
 }
 
 void PlaceTetramino(ActiveTetramino* block) {
-    int coords[BLOCK_SIZE][2] = {};
+    int coords[BLOCK_SIZE][2] = {0};
     GetTetraminoTilemapPos(*block, coords);
     for (size_t i = 0; i < BLOCK_SIZE; i++)
     {
@@ -444,14 +445,11 @@ void PlaceTetramino(ActiveTetramino* block) {
     }
 
     CheckRows();
-    // if (CheckTilesOOB()) {
-    //     gameOver = true;
-    // }
     CheckTilesOOB();
 }
 
 bool CanMove(ActiveTetramino* block, int dx, int dy) {
-    int coords[BLOCK_SIZE][2] = {};
+    int coords[BLOCK_SIZE][2] = {0};
     GetTetraminoTilemapPos(*block, coords);
     for (size_t i = 0; i < BLOCK_SIZE; i++)
     {
@@ -613,16 +611,15 @@ Rectangle intersect_tiles(ActiveTetramino block, bool* empty) {
 }
 
 float draw_trajectory() {
-    const size_t trajectory_size = 50;
     const int dt = 10;
-    PlanetState trajectory[trajectory_size];
+    PlanetState trajectory[TRAJECTORY_SIZE] = {0};
     memcpy(&trajectory[0], &planet_state, sizeof(PlanetState));
     Vector2 startPos = StateToCoords(trajectory[0], dist_scale, star_pos);
     Vector2 firstPoint = startPos;
     float maxDist = 0.0f;
     Color color = SKYBLUE;
     color.a = 127;
-    for (size_t i = 1; i < trajectory_size; i++)
+    for (size_t i = 1; i < TRAJECTORY_SIZE; i++)
     {
         float dist = Vector2Distance(star_pos, startPos);
         if (dist > maxDist)
@@ -639,7 +636,7 @@ float draw_trajectory() {
 
         Vector2 endPos = StateToCoords(trajectory[i], dist_scale, star_pos);
 
-        color.a -= 127 / trajectory_size;
+        color.a -= 127 / TRAJECTORY_SIZE;
         DrawLineEx(startPos, endPos, 2, color);
 
         if (i > 10 && Vector2Distance(endPos, firstPoint) < TILE_W * 2) {
@@ -805,6 +802,9 @@ void game_init() {
     starCamera.target = star_pos;
     starCamera.zoom = 1.0f;
     starCamera.rotation = 0.0f;
+
+    // tetraminos
+    init_tetraminos();
 
     printf("%s called\n", __FUNCTION__);
 }

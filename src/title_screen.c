@@ -11,6 +11,9 @@ static Vector2 text_size;
 
 void title_init() {
     text_size = MeasureTextEx(GetFontDefault(), text, 32, 1);
+
+    // tetraminos
+    init_tetraminos();
 }
 
 screen_t title_update() {
