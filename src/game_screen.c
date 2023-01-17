@@ -827,9 +827,7 @@ screen_t game_update() {
 
     // printf("%f %f %f %.15f %f\n", planet_state.distance.value, planet_state.distance.speed, planet_state.angle.value, planet_state.angle.speed, delta_time);
 
-    Vector2 tetraminoPos = StateToCoords(planet_state, dist_scale, star_pos);
-    active_tetramino.pos.x = tetraminoPos.x;
-    active_tetramino.pos.y = tetraminoPos.y;
+    active_tetramino.pos = StateToCoords(planet_state, dist_scale, star_pos);
 
     delta_time = UpdateDeltaTime(planet_state);
 
@@ -845,12 +843,14 @@ screen_t game_update() {
         sliding_tetramino.progress = 1.1;  // to check where to slide it first
         ResetPlanetState();
         GenerateNextTetramino();
+        active_tetramino.pos = StateToCoords(planet_state, dist_scale, star_pos);
     } else if (Vector2Distance(active_tetramino.pos, star_pos) < TILE_W / 2)
     {
         printf("Found new center!\n");
         PlaceTetramino(&active_tetramino);
         ResetPlanetState();
         GenerateNextTetramino();
+        active_tetramino.pos = StateToCoords(planet_state, dist_scale, star_pos);
     }
 
     MoveSlidingTetramino(&sliding_tetramino);
